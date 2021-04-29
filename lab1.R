@@ -37,6 +37,7 @@ ggplot(df) + geom_line(arg) + geom_point(arg)
 # zadania dodatkowe
 #ZAD 1
 X <- data.frame(rnorm(200,4,2))
-d = c (dnorm(x,4,2), x = )
-ggplot(X) + geom_histogram(aes(x = X,y = density)) + geom_line(aes(...), data =)
+d = dnorm(X,4,2))
+ggplot() + geom_histogram(aes(x = X,y = density)) + geom_line(aes(...), data = d)
+
 
