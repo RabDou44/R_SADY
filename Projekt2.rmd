@@ -1,0 +1,122 @@
+---
+title: "R Notebook"
+author: adam
+date: 28.05.2021
+output: html_document
+---
+```{r setup, echo = FALSE}
+library(dplyr)
+library(ggplot2)
+library(glmnet)
+library(lattice)
+library(caret)
+load("cancer.RData")
+```
+
+
+Zad 1 Podsumowanie/Korelacje/Violin_PLot
+```{r}
+# tylko na danych testowych
+data_test <- data.frame(data.test)
+data_train <- data.frame(data.train)
+data_tvars <- data_train[-ncol(data_train)]
+data_tvars %>% sapply(class) %>% table
+
+# zmienna objaśniane
+Y <- as.data.frame(data_train$Y)
+class(Y)
+class(data_tvars)
+
+```
+```{r}
+    data_tvars_sd <- apply(data_tvars, 2, sd)
+    top500 <- sort(data_tvars_sd, decreasing = TRUE)[1:500]
+    names_dtvars <- names(top500)
+    cols_dtvars <-  data_tvars %>% select(contains(names_dtvars))
+
+    apply(cols_dtvars, 2, sd) %>% sort(decreasing = TRUE) %>% identical(top500)
+```
+```{r}
+    foo <- function(mat)
+    {
+        temp <- 0
+        len <-dim(mat)[2]
+        for (rw in 1:(len-1))
+            temp <- c(temp,mat[rw,(1+rw):len])
+
+        as.data.frame(temp[-1])
+    }
+
+    corrSet <-foo(cols_dtvars) %>% as.vector
+    ggplot(corrSet,aes(x = "", corrSet)) + geom_violin()
+```
+
+
+Zad 2
+W przypadku regresji grzbietowej jak i metody lasso mamy do czynienia z optymalizowaniem funkcji RRS (odpowiednio dla Lasso [ozn. lasso] i r.grzbietowej [ozn.ridge]) po parametrach $\hat{\Beta}$
+Obie funkcji różnią się tylko postacią kary ściągającej
+$RSS_{ridge} = \||(y_i-x^T\hat{\beta})\|| +\lambda\||\hat{\beta}\||^2$
+$RSS_{lasso} = \|(y_i-x^T\hat{\beta})\| +\lambda\sum_{i=1}^{n}\|\hat{\beta}\|$
+(oczywiscie jeszcze w powyższych brakuje $\beta_0$)
+Także w obu przypadkach zmienną tunningowa jest $\lambda$ oraz zmiennymi objaśniajacymi są macierze X
+
+Minimum dla regresji liniowej
+$\hat{\beta}_{ridge} = (X^T*X +\lambda*I)^{-1}(X^T*y)$
+Z kolei minimum dla Lasso nie jest funckją absolutnąm gdyż moduł jest nierózńiczkowalną, ale
+jest możliwe po kolei wyliczanie wartości tej funkcji (np.: metodą największego spadku)
+
+Przypadek lasso rózni się od grzbietowego tym, że dla dostatecznie dużego $\lambda$ niektóre parametry parametry się zerują
+
+Ze względu na bral czulości na silne skolerowanie zmiennych w metodzie lasso, zostało zaproponowna Metoda Elastic Net, w której to funkcja kary przyjmuje postać:
+$\sum_{i=1}^{n}(\alpha\|\beta_i\|+(1-\alpha)\beta_i^2)$
+
+Zmienna $\alpha$ jest również zmienną tuningową.
+
+
+Zad 3 Realizacja wybory zmiennych terningowych
+Dla kolejnych wartości wartości \alpha sprawdzamy wybrane wartości \lambda
+Przykładowo poniżej pokazuję jak dla ustawionego \alpha = 0.5 znajdujemy najlepsze \lambda
+```{r}
+testedLambda <- 10^seq(-3, 8, length.out = 100)
+elNetCv <- cv.glmnet(as.matrix(data_tvars),
+                     as.matrix(Y),
+                     alpha = 0.5,
+                     lambda = testedLambda,
+                     standardize = TRUE,
+                     nfolds = 10)
+plot(elNetCv)
+elNetCv$lambda.min # lambda minimalizująca dana funckje kosztów
+```
+
+Zad 4
+Korzystamy z narzędzi z pakietu caret oraz glmnet do wytrenowania modelu gdzie
+pierw przeprowadzamy walidacje krzyżową na 10'ciu foldach
+```{r}
+train_control <- trainControl(method = "repeatedcv",
+                                number = 10,
+                                search = "random",
+                                verboseIter = TRUE)
+
+# trenujemy model Elastic Net
+elNet_model <- train(Y ~.,
+                     data_train,
+                     method = "glmnet",
+                     preProcess = c("center","scale"),
+                     tuneLength = 25,
+                     trControl = train_control
+)
+
+# używam danych na tych co byl "trenowany" żeby zobaczyć czy w ogóle czy działa
+elNet_output <- predict(elNet_model,data_tvars)
+```
+
+
+Dla wybranych \alpha i \lambda wybieramy budujemy elastic_net i random forest
+Pierw Elastic Net
+
+
+```
+Random Forest
+```{r}
+
+```
